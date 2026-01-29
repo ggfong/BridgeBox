@@ -1,0 +1,45 @@
+{
+    "mode": "serial2tcp",
+    "serial2tcp": {
+        "reconnect": true,
+        "reconnect_delay": 5.0,
+        "serial_config": {
+            "serial_port": "COM1",
+            "baud_rate": 9600,
+            "bytesize": 8,
+            "parity": "N",
+            "stopbits": 1,
+            "timeout": 1
+        },
+        "tcp_config": {
+            "tcp_host": "192.168.50.31",
+            "tcp_port": 502,
+            "connect_timeout": 10,
+            "keepalive": true
+        }
+    },
+    "tcp2serial": {
+        "reconnect": true,
+        "reconnect_delay": 5.0,
+        "tcp_config": {
+            "tcp_host": "0.0.0.0",
+            "tcp_port": 502,
+            "connect_timeout": 10,
+            "keepalive": true
+        },
+        "serial_config": {
+            "serial_port": "COM1",
+            "baud_rate": 9600,
+            "bytesize": 8,
+            "parity": "N",
+            "stopbits": 1,
+            "timeout": 1
+        }
+    },
+    "logging": {
+        "level": "INFO",
+        "file": "BridgeBox.log",
+        "max_file_size": "10MB",
+        "backup_count": 5
+    }
+}

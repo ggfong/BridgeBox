@@ -1,0 +1,10 @@
+[project]
+name = "serial-tcp-bridge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "nuitka>=2.8.10",
+    "pyserial>=3.5",
+]
