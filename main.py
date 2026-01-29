@@ -14,6 +14,50 @@ import sys
 import json
 import os
 
+DEFAULT_CONFIG = {
+    "serial2tcp": {
+        "reconnect": True,
+        "reconnect_delay": 5.0,
+        "serial_config": {
+            "serial_port": "COM1",
+            "baud_rate": 9600,
+            "bytesize": 8,
+            "parity": "N",
+            "stopbits": 1,
+            "timeout": 1
+        },
+        "tcp_config": {
+            "tcp_host": "192.168.50.31",
+            "tcp_port": 502,
+            "connect_timeout": 10,
+            "keepalive": True
+        }
+    },
+    "tcp2serial": {
+        "reconnect": True,
+        "reconnect_delay": 5.0,
+        "tcp_config": {
+            "tcp_host": "0.0.0.0",
+            "tcp_port": 502,
+            "connect_timeout": 10,
+            "keepalive": True
+        },
+        "serial_config": {
+            "serial_port": "COM1",
+            "baud_rate": 9600,
+            "bytesize": 8,
+            "parity": "N",
+            "stopbits": 1,
+            "timeout": 1
+        }
+    },
+    "logging": {
+        "level": "INFO",
+        "file": "BridgeBox.log",
+        "max_file_size": "10MB",
+        "backup_count": 5
+    }
+}
 
 class SerialToTcpBridge:
     def __init__(self, serial_port: str, baud_rate: int, tcp_host: str, tcp_port: int,
@@ -54,7 +98,7 @@ class SerialToTcpBridge:
         """设置日志配置"""
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
                 logging.FileHandler('serial_tcp_bridge.log', encoding='utf-8'),
                 logging.StreamHandler(sys.stdout)
@@ -587,7 +631,6 @@ class TcpToSerialBridge:
             'tcp_listen': f"{self.listen_host}:{self.listen_port}"
         }
 
-
 def load_config(config_file: str) -> dict:
     """从JSON文件加载配置"""
     try:
@@ -598,47 +641,54 @@ def load_config(config_file: str) -> dict:
     except json.JSONDecodeError as e:
         raise ValueError(f"配置文件格式错误: {e}")
 
-
 def main():
     config_path = 'config.json'
     if not os.path.isfile(config_path):
-        print(f"配置文件不存在: {config_path}")
-        return 1
+        print(f"未找到配置文件: {config_path}，正在创建默认配置文件...")
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(DEFAULT_CONFIG, f, ensure_ascii=False, indent=4)
+            print(f"已生成默认配置文件: {config_path}")
+        except Exception as e:
+            print(f"创建默认配置文件失败: {e}")
+            input("按回车键退出...")
+            return 1
+
     try:
         config = load_config(config_path)
-        mode = config.get('mode', 'serial2tcp')
-        if mode == 'serial2tcp':
-            s2t = config.get('serial2tcp', {})
-            serial_cfg = s2t.get('serial_config', {})
-            tcp_cfg = s2t.get('tcp_config', {})
-            serial_port = serial_cfg.get('serial_port', 'COM1')
-            baud_rate = serial_cfg.get('baud_rate', 9600)
-            tcp_host = tcp_cfg.get('tcp_host', 'localhost')
-            tcp_port = tcp_cfg.get('tcp_port', 8888)
-            auto_reconnect = s2t.get('reconnect', True)
-            reconnect_delay = s2t.get('reconnect_delay', 5.0)
-        elif mode == 'tcp2serial':
-            t2s = config.get('tcp2serial', {})
-            serial_cfg = t2s.get('serial_config', {})
-            tcp_cfg = t2s.get('tcp_config', {})
-            serial_port = serial_cfg.get('serial_port', 'COM1')
-            baud_rate = serial_cfg.get('baud_rate', 9600)
-            tcp_host = tcp_cfg.get('tcp_host', '0.0.0.0')
-            tcp_port = tcp_cfg.get('tcp_port', 8888)
-            auto_reconnect = t2s.get('reconnect', True)
-            reconnect_delay = t2s.get('reconnect_delay', 5.0)
-        else:
-            print(f"不支持的模式: {mode}")
-            return 1
     except (FileNotFoundError, ValueError) as e:
         print(f"配置文件错误: {e}")
+        input("按回车键退出...")
         return 1
 
+    print("请选择启动模式：")
+    print("1. 串口转TCP (serial2tcp)")
+    print("2. TCP转串口 (tcp2serial)")
+    mode = None
+    while True:
+        choice = input("请输入数字选择模式 (1/2): ").strip()
+        if choice == '1':
+            mode = 'serial2tcp'
+            break
+        elif choice == '2':
+            mode = 'tcp2serial'
+            break
+        else:
+            print("无效输入，请重新输入 1 或 2。")
+
     bridge = None
-    # 读取 TCP 相关参数
     tcp_connect_timeout = 10.0
     tcp_keepalive = False
     if mode == 'serial2tcp':
+        s2t = config.get('serial2tcp', {})
+        serial_cfg = s2t.get('serial_config', {})
+        tcp_cfg = s2t.get('tcp_config', {})
+        serial_port = serial_cfg.get('serial_port', 'COM1')
+        baud_rate = serial_cfg.get('baud_rate', 9600)
+        tcp_host = tcp_cfg.get('tcp_host', 'localhost')
+        tcp_port = tcp_cfg.get('tcp_port', 8888)
+        auto_reconnect = s2t.get('reconnect', True)
+        reconnect_delay = s2t.get('reconnect_delay', 5.0)
         tcp_connect_timeout = tcp_cfg.get('connect_timeout', 10.0)
         tcp_keepalive = tcp_cfg.get('keepalive', False)
         bridge = SerialToTcpBridge(
@@ -652,6 +702,15 @@ def main():
             tcp_keepalive=tcp_keepalive
         )
     elif mode == 'tcp2serial':
+        t2s = config.get('tcp2serial', {})
+        serial_cfg = t2s.get('serial_config', {})
+        tcp_cfg = t2s.get('tcp_config', {})
+        serial_port = serial_cfg.get('serial_port', 'COM1')
+        baud_rate = serial_cfg.get('baud_rate', 9600)
+        tcp_host = tcp_cfg.get('tcp_host', '0.0.0.0')
+        tcp_port = tcp_cfg.get('tcp_port', 8888)
+        auto_reconnect = t2s.get('reconnect', True)
+        reconnect_delay = t2s.get('reconnect_delay', 5.0)
         tcp_connect_timeout = tcp_cfg.get('connect_timeout', 10.0)
         tcp_keepalive = tcp_cfg.get('keepalive', False)
         bridge = TcpToSerialBridge(
@@ -668,9 +727,11 @@ def main():
     try:
         if bridge is None:
             print(f"未能初始化桥接对象，模式: {mode}")
+            input("按回车键退出...")
             return 1
         if not bridge.start():
             print(f"{mode} bridge start failed.")
+            input("按回车键退出...")
             return 1
 
         print(f"{mode} bridge started. Press Ctrl+C to stop...")
@@ -682,6 +743,7 @@ def main():
         print("\nReceived interrupt signal, stopping...")
     except Exception as e:
         print(f"Program error: {e}")
+        input("按回车键退出...")
         return 1
     finally:
         if bridge is not None:
