@@ -4,15 +4,15 @@
 #    nuitka-project: --windows-console-mode=force
 #    nuitka-project: --assume-yes-for-downloads
 #    nuitka-project: --output-filename=BridgeBox.exe
+import os
+import sys
+import json
 import serial
 import socket
 import threading
 import time
 import logging
 from typing import Optional, Tuple
-import sys
-import json
-import os
 
 DEFAULT_CONFIG = {
     "serial2tcp": {
@@ -89,21 +89,7 @@ class SerialToTcpBridge:
         self.running = False
         self.serial_thread: Optional[threading.Thread] = None
         self.tcp_thread: Optional[threading.Thread] = None
-
-        # 配置日志
-        self.setup_logging()
         self.logger = logging.getLogger(__name__)
-
-    def setup_logging(self):
-        """设置日志配置"""
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('serial_tcp_bridge.log', encoding='utf-8'),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
 
     def connect_serial(self) -> bool:
         """连接串口设备"""
@@ -414,19 +400,8 @@ class TcpToSerialBridge:
         self.running = False
         self.serial_thread: Optional[threading.Thread] = None
         self.tcp_thread: Optional[threading.Thread] = None
-
-        self.setup_logging()
+        
         self.logger = logging.getLogger(__name__)
-
-    def setup_logging(self):
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('tcp_to_serial_bridge.log', encoding='utf-8'),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
 
     def connect_serial(self) -> bool:
         try:
@@ -660,6 +635,24 @@ def main():
         print(f"配置文件错误: {e}")
         input("按回车键退出...")
         return 1
+
+    # 日志配置
+    log_cfg = config.get('logging', {})
+    log_level = getattr(logging, log_cfg.get('level', 'INFO').upper(), logging.INFO)
+    log_file = log_cfg.get('file', 'BridgeBox.log')
+    log_format = '%(asctime)s - %(levelname)s - %(message)s'
+    if log_cfg.get('file'):
+        handlers = [
+            logging.FileHandler(log_file, encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    else:
+        handlers = [logging.StreamHandler(sys.stdout)]
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+        handlers=handlers
+    )
 
     print("请选择启动模式：")
     print("1. 串口转TCP (serial2tcp)")
