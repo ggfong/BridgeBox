@@ -1,5 +1,4 @@
 {
-    "mode": "serial2tcp",
     "serial2tcp": {
         "reconnect": true,
         "reconnect_delay": 5.0,
